@@ -3,12 +3,12 @@
 /**
  * Module dependencies.
  */
-
+require('dotenv').config()
 var app = require('../app');
 var debug = require('debug')('tennis-backend:server');
 var http = require('http');
 const mongoose = require('mongoose');
-mongoose.connect('mongodb://127.0.0.1:27017/tennisFan')
+mongoose.connect(process.env.MONGO_URL)
 .then(() => console.log('DataBase Connected!'))
 .catch((error) => console.log(error));
 /**
