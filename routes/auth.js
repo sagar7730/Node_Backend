@@ -23,8 +23,9 @@ router.post("/login", admin_Controler.login);
 
 router.post("/user/login",user_Controler.login)
 router.post('/user/register',multer.any(),user_Controler.registerUser);
-router.patch('/user/forgotPassword',user_Controler.ForgotPassword)
-router.post('/user/otp',user_Controler.SendOtp)
+router.patch('/user/forgotPassword',user_Controler.ForgotPassword);
+router.post('/user/otpverified',user_Controler.otpVerified)
+router.post('/user/otp',user_Controler.SendOtp);
 
 
 // router.post("/chnage_password", user_Controler.chnage_password);

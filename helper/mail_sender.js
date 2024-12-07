@@ -72,22 +72,22 @@ let nodemailer = require('nodemailer')
 //     }
 // }
 
-const sendMail = async (email, subject, text) => {
+const sendMail = async (toEmail, subject, text) => {
     try {
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
                 user: 'nikunjnavapara51@gmail.com',
-                pass: 'thadzoxnhogjxbdf',
+                pass: 'thadzoxnhogjxbdf', // Replace with your app password
             },
         });
 
         // Email content
         const mailOptions = {
-            from: 'nikunjnavapara51@gmail.com',
-            to:'akshitamoradiya2929@gmail.com',
-            subject: subject, // Pass the subject as a parameter
-            html: text
+            from: 'nikunjnavapara51@gmail.com', // Fixed email
+            to:toEmail, // Dynamic email passed as a parameter
+            subject: subject, // Dynamic subject passed as a parameter
+            html: text // Email body passed as a parameter
         };
 
         // Send the email
@@ -100,4 +100,5 @@ const sendMail = async (email, subject, text) => {
         return { success: false, message: 'Failed to send email' };
     }
 };
+
 module.exports = sendMail;

@@ -10,7 +10,7 @@ var http = require('http');
 const mongoose = require('mongoose');
 mongoose.connect('mongodb://127.0.0.1:27017/tennisFan')
 .then(() => console.log('DataBase Connected!'))
-.catch(() => console.log('database is not connect'));
+.catch((error) => console.log(error));
 /**
  * Get port from environment and store in Express.
  */
