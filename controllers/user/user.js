@@ -436,6 +436,41 @@ exports.ForgotPassword = async (req, res, next) => {
 };
 
 
+// exports.SendOtp = async (req, res) => {
+//   try {
+//     const { email } = req.body;
+
+//     // Find the user by email
+//     const user = await User.findOne({ email });
+//     if (!user) {
+//       return res.status(404).json({ message: 'User not found.' });
+//     }
+// console.log(email,"email");
+
+//     // Generate a 6-digit OTP and set expiration (e.g., 10 minutes)
+//     const otpDigit = Math.floor(100000 + Math.random() * 900000); // Generate a 6-digit random number
+//     const otpExpire = Date.now() + 10 * 60 * 1000; // Set expiration for 10 minutes
+
+//     // Save OTP and expiration time in user document
+//     user.OTP = otpDigit;
+//     user.resetPasswordExpire = otpExpire;
+//     await user.save();
+
+//     // Send OTP to user's email
+//     const message = `Your password reset OTP is: ${otpDigit}. It will expire in 10 minutes.`;
+//     const result = await sendMail(user.email, 'Password Reset OTP', message);
+
+//     if (result.success) {
+//       res.json({ message: 'OTP sent to your email address.' });
+//     } else {
+//       res.status(500).json({ message: result.message });
+//     }
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: 'Server error. Please try again later.' });
+//   }
+// };
+
 exports.SendOtp = async (req, res) => {
   try {
     const { email } = req.body;
@@ -445,32 +480,40 @@ exports.SendOtp = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
-console.log(email,"email");
 
-    // Generate a 6-digit OTP and set expiration (e.g., 10 minutes)
-    const otpDigit = Math.floor(100000 + Math.random() * 900000); // Generate a 6-digit random number
-    const otpExpire = Date.now() + 10 * 60 * 1000; // Set expiration for 10 minutes
+    console.log(email, "email");
 
-    // Save OTP and expiration time in user document
+    // Generate a 6-digit OTP and set expiration (10 minutes)
+    const otpDigit = Math.floor(100000 + Math.random() * 900000);
+    const otpExpire = Date.now() + 10 * 60 * 1000;
+
+    // Save OTP and expiration in user document
     user.OTP = otpDigit;
     user.resetPasswordExpire = otpExpire;
     await user.save();
 
-    // Send OTP to user's email
-    const message = `Your password reset OTP is: ${otpDigit}. It will expire in 10 minutes.`;
-    const result = await sendMail(user.email, 'Password Reset OTP', message);
+    // Email content with formatted message (matching structure from the image)
+    const message = `Hello,\n\n\<br>` +
+      `You have recently received instructions to enter a one-time authentication code in order to reset your Top Tennis account password. Your code is:\n\n<br>` +
+      `[${otpDigit}]\n\n<br>` +
+      `If you did not request this code, you should change or reset your Top Tennis password immediately. ` +
+      `You may also wish to contact support@toptennis.uk to ensure your account is secure.\n\n<br>` +
+      `Sincerely,\n\n<br>` +
+      `The Top Tennis Team`;
+
+    // Send email
+    const result = await sendMail(user.email, 'Top Tennis - Password Reset OTP', message);
 
     if (result.success) {
       res.json({ message: 'OTP sent to your email address.' });
     } else {
-      res.status(500).json({ message: result.message });
+      res.status(500).json({ message: result.message || 'Failed to send OTP. Please try again later.' });
     }
   } catch (error) {
-    console.error(error);
+    console.error('Send OTP Error:', error);
     res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 };
-
 
 exports.otpVerified = async (req, res) => {
   try {
