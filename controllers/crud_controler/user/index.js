@@ -838,159 +838,46 @@ async function playerBuy(req, res) {
 
 
 
-async function sellPlayer(req, res) {
-  try {
-    const { userId } = req.params; // Extract userId from URL params
-    const { playerId, removePlayers, share_quantity } = req.body; // Destructure playerId, removePlayers, and share_quantity
-
-    // Fetch the user from the database
-    const user = await User.findById(userId);
-    
-    if (!user) {
-      return res.status(404).json({ 
-        error: "User not found.",
-        details: `No user exists with the provided userId: ${userId}`,
-      });
-    }
-
-    // Check if playerId or removePlayers array is provided
-    if (!playerId && (!removePlayers || removePlayers.length === 0)) {
-      return res.status(400).json({ error: "Player ID or removePlayers array is required." });
-    }
-
-    // Handle removing multiple players if removePlayers array is provided
-    if (removePlayers && removePlayers.length > 0) {
-      for (const removePlayerId of removePlayers) {
-        // Find the player in the user's team
-        const playerInTeam = user.team.players.find((player) =>
-          player._id.equals(removePlayerId)
-        );
-
-        if (playerInTeam) {
-          // Fetch the player from the Player database to get their value
-          const playerData = await Player.findById(removePlayerId);
-          if (!playerData) {
-            return res.status(404).json({ error: `Player with ID ${removePlayerId} not found.` });
-          }
-
-          // Add the player’s total value (all shares) back to the user's credits
-          const totalValue = playerInTeam.share_quantity * playerData.value;
-          user.credits += totalValue; // Add value back to credits
-
-          // Remove the player entirely since the operation is to remove the whole player
-          user.team.players = user.team.players.filter(
-            (player) => !player._id.equals(removePlayerId)
-          );
-        }
-      }
-    }
-
-    // Handle selling part of a player's shares (and possibly removing the player if their shares drop to zero)
-    if (playerId && typeof share_quantity === 'number') {
-      // Find the player in the user's team
-      const playerInTeam = user.team.players.find((player) =>
-        player._id.equals(playerId)
-      );
-
-      if (playerInTeam) {
-        // Fetch the player from the Player database to get their value
-        const playerData = await Player.findById(playerId);
-        if (!playerData) {
-          return res.status(404).json({ error: `Player with ID ${playerId} not found.` });
-        }
-
-        // Check if the user has enough shares to sell
-        if (playerInTeam.share_quantity >= share_quantity) {
-          // Calculate the value of the shares being sold
-          const totalValue = share_quantity * playerData.value;
-          
-          // Add the value of sold shares to user's credits
-          user.credits += totalValue;
-
-          // Reduce the player's share_quantity by the number of shares being sold
-          playerInTeam.share_quantity -= share_quantity;
-
-          // If share_quantity becomes 0, remove the player from the team
-          if (playerInTeam.share_quantity === 0) {
-            user.team.players = user.team.players.filter(
-              (player) => !player._id.equals(playerId)
-            );
-          }
-        } else {
-          return res.status(400).json({ error: "Not enough shares to sell." });
-        }
-      } else {
-        return res.status(404).json({ error: "Player not found in the team." });
-      }
-    }
-
-    // Save the updated user data
-    await user.save();
-
-    // Respond with the updated credits and team information
-    res.status(200).json({ 
-      message: "Player(s) shares sold successfully.",
-      updatedCredits: user.credits, // This will reflect the updated credits after the sale
-      updatedTeam: user.team.players // This will reflect the updated player list and share_quantity
-    });
-  } catch (error) {
-    console.error(error);
-
-    // Enhanced error logging for internal server error
-    res.status(500).json({
-      error: "Internal server error.",
-      message: error.message,
-      stack: error.stack, // You can remove this in production to avoid leaking stack traces
-    });
-  }
-}
-
 // async function sellPlayer(req, res) {
 //   try {
-//     const { userId } = req.params;
-//     const { playerId, removePlayers, share_quantity } = req.body;
+//     const { userId } = req.params; // Extract userId from URL params
+//     const { playerId, removePlayers, share_quantity } = req.body; // Destructure playerId, removePlayers, and share_quantity
 
+//     // Fetch the user from the database
 //     const user = await User.findById(userId);
-
+    
 //     if (!user) {
-//       return res.status(404).json({
+//       return res.status(404).json({ 
 //         error: "User not found.",
 //         details: `No user exists with the provided userId: ${userId}`,
 //       });
 //     }
 
+//     // Check if playerId or removePlayers array is provided
 //     if (!playerId && (!removePlayers || removePlayers.length === 0)) {
 //       return res.status(400).json({ error: "Player ID or removePlayers array is required." });
 //     }
 
-//     let openingCredits = user.credits;
-//     const playerTransactions = [];
-
-//     // Remove players
+//     // Handle removing multiple players if removePlayers array is provided
 //     if (removePlayers && removePlayers.length > 0) {
 //       for (const removePlayerId of removePlayers) {
+//         // Find the player in the user's team
 //         const playerInTeam = user.team.players.find((player) =>
 //           player._id.equals(removePlayerId)
 //         );
 
 //         if (playerInTeam) {
+//           // Fetch the player from the Player database to get their value
 //           const playerData = await Player.findById(removePlayerId);
-//           if (!playerData) continue;
+//           if (!playerData) {
+//             return res.status(404).json({ error: `Player with ID ${removePlayerId} not found.` });
+//           }
 
+//           // Add the player’s total value (all shares) back to the user's credits
 //           const totalValue = playerInTeam.share_quantity * playerData.value;
-//           user.credits += totalValue;
+//           user.credits += totalValue; // Add value back to credits
 
-//           playerTransactions.push({
-//             player_id: playerData._id,
-//             name: playerData.name,
-//             profile_image: playerData.profile_image,
-//             value: playerData.value,
-//             original_share_quantity: playerInTeam.share_quantity, // Use original shares here
-//             sell_share_quantity: playerInTeam.share_quantity,
-//             profit_loss: totalValue,
-//             type: "remove"
-//           });
-
+//           // Remove the player entirely since the operation is to remove the whole player
 //           user.team.players = user.team.players.filter(
 //             (player) => !player._id.equals(removePlayerId)
 //           );
@@ -998,94 +885,207 @@ async function sellPlayer(req, res) {
 //       }
 //     }
 
-//     // Sell player shares
+//     // Handle selling part of a player's shares (and possibly removing the player if their shares drop to zero)
 //     if (playerId && typeof share_quantity === 'number') {
+//       // Find the player in the user's team
 //       const playerInTeam = user.team.players.find((player) =>
 //         player._id.equals(playerId)
 //       );
 
 //       if (playerInTeam) {
+//         // Fetch the player from the Player database to get their value
 //         const playerData = await Player.findById(playerId);
 //         if (!playerData) {
 //           return res.status(404).json({ error: `Player with ID ${playerId} not found.` });
 //         }
 
-//         const originalShares = playerInTeam.share_quantity; // Track original shares
-//         console.log(originalShares);
+//         // Check if the user has enough shares to sell
+//         if (playerInTeam.share_quantity >= share_quantity) {
+//           // Calculate the value of the shares being sold
+//           const totalValue = share_quantity * playerData.value;
+          
+//           // Add the value of sold shares to user's credits
+//           user.credits += totalValue;
 
-//         let sellableShares = share_quantity;
-//         let totalValue = 0;
-
-//         // Handle the sell logic
-//         if (originalShares >= share_quantity) {
-//           totalValue = share_quantity * playerData.value;
+//           // Reduce the player's share_quantity by the number of shares being sold
 //           playerInTeam.share_quantity -= share_quantity;
+
+//           // If share_quantity becomes 0, remove the player from the team
+//           if (playerInTeam.share_quantity === 0) {
+//             user.team.players = user.team.players.filter(
+//               (player) => !player._id.equals(playerId)
+//             );
+//           }
 //         } else {
-//           sellableShares = originalShares;
-//           totalValue = sellableShares * playerData.value;
-//           playerInTeam.share_quantity = 0;
-//         }
-
-//         user.credits += totalValue;
-//         const profilevalue = originalShares - sellableShares;
-
-//         playerTransactions.push({
-//           player_id: playerData._id,
-//           name: playerData.name,
-//           profile_image: playerData.profile_image,
-//           value: playerData.value,
-//           original_share_quantity: originalShares, // Keep original share quantity
-//           sell_share_quantity: sellableShares,
-//           profit_loss: profilevalue, // Profit/Loss based on total value
-//           type: "sell"
-//         });
-
-//         // Update team
-//         if (playerInTeam.share_quantity === 0) {
-//           user.team.players = user.team.players.filter(
-//             (player) => !player._id.equals(playerId)
-//           );
-//         } else {
-//           const index = user.team.players.findIndex((player) => player._id.equals(playerId));
-//           user.team.players[index] = playerInTeam;
+//           return res.status(400).json({ error: "Not enough shares to sell." });
 //         }
 //       } else {
 //         return res.status(404).json({ error: "Player not found in the team." });
 //       }
 //     }
 
+//     // Save the updated user data
 //     await user.save();
 
-//     const newTransaction = new transactiondata({
-//       user_data: {
-//         user_id: user._id,
-//         name: user.name,
-//         email: user.email,
-//         profile_image: user.profile_image,
-//         credits: user.credits,
-//       },
-//       players_data: playerTransactions,
-//       opening_credits: openingCredits,
-//       closing_credits: user.credits,
-//       total_credits: user.credits - openingCredits,
-//       grand_total_credits: user.credits,
-//     });
-
-//     await newTransaction.save();
-
-//     res.status(200).json({
-//       message: "Player(s) sold successfully.",
-//       updatedCredits: user.credits,
-//       updatedTeam: user.team.players,
+//     // Respond with the updated credits and team information
+//     res.status(200).json({ 
+//       message: "Player(s) shares sold successfully.",
+//       updatedCredits: user.credits, // This will reflect the updated credits after the sale
+//       updatedTeam: user.team.players // This will reflect the updated player list and share_quantity
 //     });
 //   } catch (error) {
 //     console.error(error);
+
+//     // Enhanced error logging for internal server error
 //     res.status(500).json({
 //       error: "Internal server error.",
 //       message: error.message,
+//       stack: error.stack, // You can remove this in production to avoid leaking stack traces
 //     });
 //   }
 // }
+
+async function sellPlayer(req, res) {
+  try {
+    const { userId } = req.params;
+    const { playerId, removePlayers, share_quantity } = req.body;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        error: "User not found.",
+        details: `No user exists with the provided userId: ${userId}`,
+      });
+    }
+
+    if (!playerId && (!removePlayers || removePlayers.length === 0)) {
+      return res.status(400).json({ error: "Player ID or removePlayers array is required." });
+    }
+
+    let openingCredits = user.credits;
+    const playerTransactions = [];
+
+    // Remove players
+    if (removePlayers && removePlayers.length > 0) {
+      for (const removePlayerId of removePlayers) {
+        const playerInTeam = user.team.players.find((player) =>
+          player._id.equals(removePlayerId)
+        );
+
+        if (playerInTeam) {
+          const playerData = await Player.findById(removePlayerId);
+          if (!playerData) continue;
+
+          const totalValue = playerInTeam.share_quantity * playerData.value;
+          user.credits += totalValue;
+
+          playerTransactions.push({
+            player_id: playerData._id,
+            name: playerData.name,
+            profile_image: playerData.profile_image,
+            value: playerData.value,
+            original_share_quantity: playerInTeam.share_quantity, // Use original shares here
+            sell_share_quantity: playerInTeam.share_quantity,
+            profit_loss: totalValue,
+            type: "remove"
+          });
+
+          user.team.players = user.team.players.filter(
+            (player) => !player._id.equals(removePlayerId)
+          );
+        }
+      }
+    }
+
+    // Sell player shares
+    if (playerId && typeof share_quantity === 'number') {
+      const playerInTeam = user.team.players.find((player) =>
+        player._id.equals(playerId)
+      );
+
+      if (playerInTeam) {
+        const playerData = await Player.findById(playerId);
+        if (!playerData) {
+          return res.status(404).json({ error: `Player with ID ${playerId} not found.` });
+        }
+
+        const originalShares = playerInTeam.share_quantity; // Track original shares
+        console.log(originalShares);
+
+        let sellableShares = share_quantity;
+        let totalValue = 0;
+
+        // Handle the sell logic
+        if (originalShares >= share_quantity) {
+          totalValue = share_quantity * playerData.value;
+          playerInTeam.share_quantity -= share_quantity;
+        } else {
+          sellableShares = originalShares;
+          totalValue = sellableShares * playerData.value;
+          playerInTeam.share_quantity = 0;
+        }
+
+        user.credits += totalValue;
+        const profilevalue = originalShares - sellableShares;
+
+        playerTransactions.push({
+          player_id: playerData._id,
+          name: playerData.name,
+          profile_image: playerData.profile_image,
+          value: playerData.value,
+          original_share_quantity: originalShares, // Keep original share quantity
+          sell_share_quantity: sellableShares,
+          profit_loss: profilevalue, // Profit/Loss based on total value
+          type: "sell"
+        });
+
+        // Update team
+        if (playerInTeam.share_quantity === 0) {
+          user.team.players = user.team.players.filter(
+            (player) => !player._id.equals(playerId)
+          );
+        } else {
+          const index = user.team.players.findIndex((player) => player._id.equals(playerId));
+          user.team.players[index] = playerInTeam;
+        }
+      } else {
+        return res.status(404).json({ error: "Player not found in the team." });
+      }
+    }
+
+    await user.save();
+
+    const newTransaction = new transactiondata({
+      user_data: {
+        user_id: user._id,
+        name: user.name,
+        email: user.email,
+        profile_image: user.profile_image,
+        credits: user.credits,
+      },
+      players_data: playerTransactions,
+      opening_credits: openingCredits,
+      closing_credits: user.credits,
+      total_credits: user.credits - openingCredits,
+      grand_total_credits: user.credits,
+    });
+
+    await newTransaction.save();
+
+    res.status(200).json({
+      message: "Player(s) sold successfully.",
+      updatedCredits: user.credits,
+      updatedTeam: user.team.players,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      error: "Internal server error.",
+      message: error.message,
+    });
+  }
+}
 
 async function textList(req,res) {
   try {
