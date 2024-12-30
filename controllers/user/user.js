@@ -495,7 +495,7 @@ exports.SendOtp = async (req, res) => {
     // Email content with formatted message (matching structure from the image)
     const message = `Hello,\n\n\<br>` +
       `You have recently received instructions to enter a one-time authentication code in order to reset your Top Tennis account password. Your code is:\n\n<br>` +
-      `[${otpDigit}]\n\n<br>` +
+      `[${otpDigit}]\n\n<br>`+
       `If you did not request this code, you should change or reset your Top Tennis password immediately. ` +
       `You may also wish to contact support@toptennis.uk to ensure your account is secure.\n\n<br>` +
       `Sincerely,\n\n<br>` +
