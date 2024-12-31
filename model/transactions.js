@@ -125,7 +125,7 @@ const playerTransactionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["sell", "remove"],
+      enum: ["sell", "remove", "buy"],  // Add "update" to the list
       required: true,
     },
   },

@@ -739,100 +739,229 @@ async function userList(req,res){
 //   }
 // }
 
+// async function playerBuy(req, res) {
+//   try {
+//     const { userId } = req.params; // Extract userId from URL params
+//     const { addPlayers } = req.body;
+
+//     // Validate request data
+//     if (!userId) {
+//       return res.status(400).json({ error: "User ID is required." });
+//     }
+
+//     // Fetch the user from the database
+//     const user = await User.findById(userId);
+//     if (!user) {
+//       return res.status(404).json({ error: "User not found." });
+//     }
+
+//     // Initialize an array for new players if it exists
+//     let newPlayers = [];
+//     let totalCost = 0; // Variable to track total cost for updating credits
+
+//     // Handle adding/updating players (only if addPlayers array is provided)
+//     if (addPlayers && addPlayers.length > 0) {
+//       for (const { playerId, share_quantity } of addPlayers) {
+//         // Fetch the player from the Player database
+//         const playerData = await Player.findById(playerId);
+//         if (!playerData) {
+//           return res.status(404).json({ error: `Player with ID ${playerId} not found.` });
+//         }
+
+//         // Check if the player already exists in the user's team
+//         const existingPlayerIndex = user.team.players.findIndex((player) =>
+//           player._id.equals(playerId)
+//         );
+
+//         if (existingPlayerIndex !== -1) {
+//           // Update existing player's share quantity
+//           const existingPlayer = user.team.players[existingPlayerIndex];
+//           const oldShareQuantity = existingPlayer.share_quantity;
+
+//           // Calculate cost difference
+//           totalCost += (share_quantity - oldShareQuantity) * playerData.value;
+
+//           // Update the share quantity
+//           existingPlayer.share_quantity = share_quantity;
+//         } else {
+//           // If the player does not exist, check the team size limit
+//           if (user.team.players.length >= 8) {
+//             return res.status(400).json({
+//               error: "Cannot add more than 8 players to the team.",
+//             });
+//           }
+
+//           // If there's space in the team, add the player
+//           newPlayers.push({
+//             _id: playerData._id,
+//             name: playerData.name,
+//             profile_image: playerData.profile_image,
+//             value: playerData.value,
+//             share_quantity: share_quantity || 1, // Default to 1 if not provided
+//           });
+
+//           // Update total cost for the new player
+//           totalCost += playerData.value * (share_quantity || 1); // Add cost for new player
+//         }
+//       }
+//     }
+
+//     // Check if the user has enough credits before updating
+//     if (user.credits < totalCost) {
+//       return res.status(400).json({
+//         error: "Insufficient credits to update players.",
+//       });
+//     }
+
+//     // Handle adding new players after updating existing ones
+//     for (const newPlayer of newPlayers) {
+//       // Add the player to the team
+//       user.team.players.push(newPlayer);
+//     }
+
+//     // Subtract the total cost from the user's credits
+//     user.credits -= totalCost;
+
+//     // Save the updated user data
+//     await user.save();
+
+//     res.status(200).json({ message: "Team updated successfully." });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: "Internal server error." });
+//   }
+// }
+
 async function playerBuy(req, res) {
   try {
-    const { userId } = req.params; // Extract userId from URL params
-    const { addPlayers } = req.body;
+    const { userId } = req.params;  // Extract userId from URL params
+    const { addPlayers } = req.body;  // Get players and transaction type
 
-    // Validate request data
-    if (!userId) {
-      return res.status(400).json({ error: "User ID is required." });
-    }
-
-    // Fetch the user from the database
+    // Fetch user from the database
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ error: "User not found." });
     }
 
-    // Initialize an array for new players if it exists
+    // Initialize variables
     let newPlayers = [];
-    let totalCost = 0; // Variable to track total cost for updating credits
+    let updatedPlayers = [];
+    let totalCost = 0;
 
-    // Handle adding/updating players (only if addPlayers array is provided)
+    // Handle adding/updating players
     if (addPlayers && addPlayers.length > 0) {
-      for (const { playerId, share_quantity } of addPlayers) {
-        // Fetch the player from the Player database
+      for (const { playerId, share_quantity, type } of addPlayers) {
         const playerData = await Player.findById(playerId);
         if (!playerData) {
           return res.status(404).json({ error: `Player with ID ${playerId} not found.` });
         }
 
-        // Check if the player already exists in the user's team
         const existingPlayerIndex = user.team.players.findIndex((player) =>
           player._id.equals(playerId)
         );
 
         if (existingPlayerIndex !== -1) {
-          // Update existing player's share quantity
+          // Update existing player
           const existingPlayer = user.team.players[existingPlayerIndex];
           const oldShareQuantity = existingPlayer.share_quantity;
+          const costDifference = (share_quantity - oldShareQuantity) * playerData.value;
 
-          // Calculate cost difference
-          totalCost += (share_quantity - oldShareQuantity) * playerData.value;
+          totalCost += costDifference;
 
-          // Update the share quantity
           existingPlayer.share_quantity = share_quantity;
+
+          // Prepare data for transaction record
+          updatedPlayers.push({
+            player_id: playerData._id,
+            name: playerData.name,
+            profile_image: playerData.profile_image,
+            value: playerData.value,
+            original_share_quantity: oldShareQuantity,
+            sell_share_quantity: share_quantity - oldShareQuantity,
+            profit_loss: costDifference,
+            type: type || "buy",
+          });
         } else {
-          // If the player does not exist, check the team size limit
+          // Add new player to the team
           if (user.team.players.length >= 8) {
             return res.status(400).json({
               error: "Cannot add more than 8 players to the team.",
             });
           }
 
-          // If there's space in the team, add the player
           newPlayers.push({
             _id: playerData._id,
             name: playerData.name,
             profile_image: playerData.profile_image,
             value: playerData.value,
-            share_quantity: share_quantity || 1, // Default to 1 if not provided
+            share_quantity: share_quantity || 1,
           });
 
-          // Update total cost for the new player
-          totalCost += playerData.value * (share_quantity || 1); // Add cost for new player
+          totalCost += playerData.value * (share_quantity || 1);
+
+          // Prepare data for transaction record
+          updatedPlayers.push({
+            player_id: playerData._id,
+            name: playerData.name,
+            profile_image: playerData.profile_image,
+            value: playerData.value,
+            original_share_quantity: 0,
+            sell_share_quantity: share_quantity || 1,
+            profit_loss: playerData.value * (share_quantity || 1),
+            type: type || "buy",
+          });
         }
       }
     }
 
-    // Check if the user has enough credits before updating
+    // Check if user has enough credits
     if (user.credits < totalCost) {
       return res.status(400).json({
         error: "Insufficient credits to update players.",
       });
     }
 
-    // Handle adding new players after updating existing ones
+    // Update user data
     for (const newPlayer of newPlayers) {
-      // Add the player to the team
       user.team.players.push(newPlayer);
     }
 
-    // Subtract the total cost from the user's credits
+    // Deduct total cost from user's credits
+    const openingCredits = user.credits;
     user.credits -= totalCost;
+    const closingCredits = user.credits;
 
-    // Save the updated user data
+    // Save user updates
     await user.save();
 
-    res.status(200).json({ message: "Team updated successfully." });
+    // Create a transaction record
+    const transaction = new transactiondata({
+      user_data: {
+        user_id: user._id,
+        name: user.name,
+        email: user.email,
+        profile_image: user.profile_image,
+        credits: closingCredits,
+      },
+      players_data: updatedPlayers,
+      opening_credits: openingCredits,
+      closing_credits: closingCredits,
+      total_credits: totalCost,
+      grand_total_credits: closingCredits
+    });
+
+    // Save transaction to database
+    const savedTransaction = await transaction.save();
+
+    res.status(200).json({
+      message: "Team updated successfully.",
+      transaction: savedTransaction,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal server error." });
   }
 }
-
-
 
 
 
