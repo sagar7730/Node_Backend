@@ -435,42 +435,6 @@ exports.ForgotPassword = async (req, res, next) => {
   }
 };
 
-
-// exports.SendOtp = async (req, res) => {
-//   try {
-//     const { email } = req.body;
-
-//     // Find the user by email
-//     const user = await User.findOne({ email });
-//     if (!user) {
-//       return res.status(404).json({ message: 'User not found.' });
-//     }
-// console.log(email,"email");
-
-//     // Generate a 6-digit OTP and set expiration (e.g., 10 minutes)
-//     const otpDigit = Math.floor(100000 + Math.random() * 900000); // Generate a 6-digit random number
-//     const otpExpire = Date.now() + 10 * 60 * 1000; // Set expiration for 10 minutes
-
-//     // Save OTP and expiration time in user document
-//     user.OTP = otpDigit;
-//     user.resetPasswordExpire = otpExpire;
-//     await user.save();
-
-//     // Send OTP to user's email
-//     const message = `Your password reset OTP is: ${otpDigit}. It will expire in 10 minutes.`;
-//     const result = await sendMail(user.email, 'Password Reset OTP', message);
-
-//     if (result.success) {
-//       res.json({ message: 'OTP sent to your email address.' });
-//     } else {
-//       res.status(500).json({ message: result.message });
-//     }
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: 'Server error. Please try again later.' });
-//   }
-// };
-
 exports.SendOtp = async (req, res) => {
   try {
     const { email } = req.body;
