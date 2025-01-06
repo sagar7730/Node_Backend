@@ -115,6 +115,129 @@ async function userUpdated(req, res, next) {
   }
 }
 
+// async function addTeam(req, res) {
+//   try {
+//     const userId = req.params.userId;
+//     const teamName = req.body.teamName;
+//     const profileImage =
+//       req.files && req.files.length > 0
+//         ? req.files[0].filename
+//         : "default_team.png";
+
+//     const playersData = JSON.parse(req.body.players);
+
+//     if (!Array.isArray(playersData)) {
+//       return res
+//         .status(400)
+//         .json({ message: "Invalid players data. It should be an array." });
+//     }
+
+//     // Find the user by ID
+//     const user = await User.findById(userId);
+//     if (!user) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     // Correct the check for an existing team
+//     if (user.team && user.team.players && user.team.players.length > 0) {
+//       return res.status(400).json({
+//         message: "Team already exists. You cannot create another team.",
+//       });
+//     }
+
+//     // Proceed with the team creation logic...
+//     const playerIds = playersData.map((player) => player.id);
+//     const playersFromDb = await Player.find({ _id: { $in: playerIds } });
+
+//     if (playersFromDb.length !== playerIds.length) {
+//       return res.status(404).json({ message: "One or more players not found" });
+//     }
+
+//     const playersToAdd = playersFromDb.map((player) => {
+//       const incomingPlayer = playersData.find(
+//         (p) => p.id === player._id.toString()
+//       );
+//       return {
+//         _id: player._id,
+//         name: player.name,
+//         profile_image: player.profile_image,
+//         value: player.value,
+//         share_quantity: incomingPlayer.share_quantity || 1,
+//         createdAt: new Date(),
+//       };
+//     });
+
+//     let totalCost = 0;
+//     let grandTotalCredits = 0;
+//     playersToAdd.forEach((player) => {
+//       const playerCost = player.value * player.share_quantity;
+//       totalCost += playerCost;
+//       grandTotalCredits += player.share_quantity;
+//     });
+
+//     if (user.credits < totalCost) {
+//       return res.status(400).json({
+//         message: "Insufficient credits to add these players.",
+//         requiredCredits: totalCost,
+//         availableCredits: user.credits,
+//       });
+//     }
+
+//     const openingCredits = user.credits;
+//     user.credits -= totalCost;
+//     const closingCredits = user.credits;
+
+//     if (playersToAdd.length > 8) {
+//       return res
+//         .status(400)
+//         .json({ message: "Cannot add more than 8 players to the team." });
+//     }
+
+//     const teamData = {
+//       name: teamName,
+//       profile_image: profileImage,
+//       players: playersToAdd,
+//     };
+
+//     user.team = teamData;
+
+//     await user.save();
+
+//     const transaction = new transactiondata({
+//       user_data: {
+//         user_id: user._id,
+//         name: user.name,
+//         email: user.email,
+//         profile_image: user.profile_image,
+//         credits: openingCredits,
+//       },
+//       players_data: playersToAdd.map((player) => ({
+//         player_id: player._id,
+//         name: player.name,
+//         profile_image: player.profile_image,
+//         value: player.value,
+//         share_quantity: player.share_quantity,
+//       })),
+//       opening_credits: openingCredits,
+//       closing_credits: closingCredits,
+//       total_credits: totalCost,
+//       grand_total_credits: grandTotalCredits,
+//     });
+
+//     await transaction.save();
+
+//     res.status(200).json({
+//       message: "Team created and players added successfully",
+//       teamData: user.team,
+//       remainingCredits: user.credits,
+//       transaction,
+//     });
+//   } catch (error) {
+//     console.error("Server error:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// }
+
 async function addTeam(req, res) {
   try {
     const userId = req.params.userId;
@@ -138,14 +261,14 @@ async function addTeam(req, res) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Correct the check for an existing team
+    // Check if the user already has a team
     if (user.team && user.team.players && user.team.players.length > 0) {
       return res.status(400).json({
         message: "Team already exists. You cannot create another team.",
       });
     }
 
-    // Proceed with the team creation logic...
+    // Get the players from the database
     const playerIds = playersData.map((player) => player.id);
     const playersFromDb = await Player.find({ _id: { $in: playerIds } });
 
@@ -153,6 +276,7 @@ async function addTeam(req, res) {
       return res.status(404).json({ message: "One or more players not found" });
     }
 
+    // Add players to the team
     const playersToAdd = playersFromDb.map((player) => {
       const incomingPlayer = playersData.find(
         (p) => p.id === player._id.toString()
@@ -175,6 +299,7 @@ async function addTeam(req, res) {
       grandTotalCredits += player.share_quantity;
     });
 
+    // Ensure the user has enough credits
     if (user.credits < totalCost) {
       return res.status(400).json({
         message: "Insufficient credits to add these players.",
@@ -187,22 +312,26 @@ async function addTeam(req, res) {
     user.credits -= totalCost;
     const closingCredits = user.credits;
 
+    // Limit the number of players in the team
     if (playersToAdd.length > 8) {
       return res
         .status(400)
         .json({ message: "Cannot add more than 8 players to the team." });
     }
 
+    // Create team data
     const teamData = {
       name: teamName,
       profile_image: profileImage,
       players: playersToAdd,
     };
 
+    // Assign team data to the user
     user.team = teamData;
 
     await user.save();
 
+    // Prepare the transaction details
     const transaction = new transactiondata({
       user_data: {
         user_id: user._id,
@@ -217,6 +346,10 @@ async function addTeam(req, res) {
         profile_image: player.profile_image,
         value: player.value,
         share_quantity: player.share_quantity,
+        original_share_quantity: player.share_quantity,  // First-time purchase
+        sell_share_quantity: 0,  // Not selling initially
+        profit_loss: 0,  // No profit/loss initially
+        type: "buy",  // "buy" type for initial purchase
       })),
       opening_credits: openingCredits,
       closing_credits: closingCredits,
